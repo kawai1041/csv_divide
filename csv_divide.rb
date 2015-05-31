@@ -60,7 +60,7 @@ end
 inis = []
 File.open(INI_FILE, 'r') {|f|
   ini_strings = f.read
-  ini_strings.split(/-{20,}/).each {|ini_string|
+  ini_strings.split(/^-{20,}/).each {|ini_string|
 #    p ini_string
     inis << INI.new(ini_string)
   }
