@@ -30,51 +30,51 @@ class INI
         end
       }
     }
+
 =begin
     raise "INI file ERROR keys not defined" if @keys == nil
     raise "INI file ERROR file not defined" if @file_prefix == nil and (@org == nil or @ref == nil)
     raise "INI FILE ERROR prefix and (org_file, ref_file) both degined" if @file_prefix and (@org or @ref)
-    if @org == nil and @ref == nil
-      set_org_ref
-    end
-    if @out == nil
-      @out = 'diff_' + File.basename(@org, ".*") + '_' + File.basename(@ref, ".*") + '.csv'
-    end
-  end
-  
-  private
-  def set_org_ref
-    org_mtime = ref_mtime = Time.new(0)     
-    Dir.glob(@file_prefix + '*').each {|file|
-      mtime = File.stat(file).mtime
-      if mtime > org_mtime
-        org_mtime = mtime
-        @org = file
-        if mtime > ref_mtime
-          org_mtime = ref_mtime
-          ref_mtime = mtime
-          @org = @ref
-          @ref = file
-        end
-      end
-    }
 =end
 
   end
     
 end
 
+def divide(input_file, ini)
+  out_files = {}
+  ini.out_file_prefix.values.uniq.each {|prefix|
+    out_files[prefix] = File.open((prefix + input_file), 'w')
+  }
+  File.open(input_file, 'r') {|f|
+    f.each {|line|
+      if prefix = ini.out_file_prefix[line.parse_csv[ini.col]]
+        out_files[prefix].print line
+      end
+    }
+  }
+  out_files.values.each {|f| f.close}
+end
+
+
 inis = []
 File.open(INI_FILE, 'r') {|f|
   ini_strings = f.read
   ini_strings.split(/-{20,}/).each {|ini_string|
+#    p ini_string
     inis << INI.new(ini_string)
   }
 }
 p inis
+inis.each {|ini|
+  p ini
+  Dir.glob(ini.input_prefix + '*').each {|file|
+    divide(file, ini)
+  }
+}
 
 exit
-
+  
 org = {}
 org_keys = Set.new
 ref = {}
