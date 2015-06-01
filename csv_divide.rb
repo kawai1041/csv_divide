@@ -31,12 +31,6 @@ class INI
       }
     }
 
-=begin
-    raise "INI file ERROR keys not defined" if @keys == nil
-    raise "INI file ERROR file not defined" if @file_prefix == nil and (@org == nil or @ref == nil)
-    raise "INI FILE ERROR prefix and (org_file, ref_file) both degined" if @file_prefix and (@org or @ref)
-=end
-
   end
     
 end
@@ -44,68 +38,47 @@ end
 def divide(input_file, ini)
   out_files = {}
   ini.out_file_prefix.values.uniq.each {|prefix|
+#    out_files[prefix] = :not_open
     out_files[prefix] = File.open((prefix + input_file), 'w')
   }
   File.open(input_file, 'r') {|f|
     f.each {|line|
-      if prefix = ini.out_file_prefix[line.parse_csv[ini.col]]
-        out_files[prefix].print line
+      keyword = line.parse_csv[ini.col] || ''
+      keyword.strip!
+      if keyword.size > 0
+        match = false
+        ini.out_file_prefix.keys.each {|key|
+          if /^#{key}/ =~ keyword
+#            out_files[ini.out_file_prefix[key]] = File.open((ini.out_file_prefix[key] + input_file), 'w') if out_files[ini.out_file_prefix[key]] == :not_open
+            out_files[ini.out_file_prefix[key]].print line
+            match = true
+          end
+        }
+        unless match
+#          out_files[OTHER_KEY] = File.open((ini.out_file_prefix[OTHER_KEY] + input_file), 'w') if out_files[ini.out_file_prefix[OTHER_KEY]] == :not_open
+          out_files[ini.out_file_prefix[OTHER_KEY]].print line
+        end
       end
     }
   }
   out_files.values.each {|f| f.close}
 end
 
+OTHER_KEY = '#####other#####'
 
 inis = []
 File.open(INI_FILE, 'r') {|f|
   ini_strings = f.read
-  ini_strings.split(/^-{20,}/).each {|ini_string|
+  ini_strings.split(/-{20,}/).each {|ini_string|
 #    p ini_string
     inis << INI.new(ini_string)
   }
 }
-p inis
+
 inis.each {|ini|
-  p ini
+
   Dir.glob(ini.input_prefix + '*').each {|file|
     divide(file, ini)
   }
 }
 
-exit
-  
-org = {}
-org_keys = Set.new
-ref = {}
-ref_keys = Set.new
-
-File.open(ini.out, 'w') {|of|
-
-  File.open(ini.org, 'r') {|f|
-    f.each {|line|
-      k = key(line, ini.keys)
-      of.puts "same key #{k} found in org file. new record is used" if org_keys.include? k
-      org_keys << k
-      org[key(line, ini.keys)] = line
-    }
-  }
-
-  File.open(ini.ref, 'r') {|f|
-    f.each {|line|
-      k = key(line, ini.keys)
-      of.puts "same key #{k} found in ref file. new record is used" if ref_keys.include? k
-      ref_keys << k
-      ref[key(line, ini.keys)] = line
-    }
-  }
-  
-  of.puts "from #{ini.org} to #{ini.ref}"
-  (org_keys - ref_keys).each {|k|
-    of.print "-," + org[k]
-  }
-
-  (ref_keys - org_keys).each {|k|
-    of.print "+," + ref[k]
-  }
-}
